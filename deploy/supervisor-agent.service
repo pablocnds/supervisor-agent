@@ -1,0 +1,21 @@
+[Unit]
+Description=The Supervisor research environment backend
+After=network-online.target irh-daemon.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rh-agent
+Group=irh-worker
+ExecStart=/srv/supervisor/current/.venv/bin/supervisor-daemon --config /var/lib/supervisor-agent/config.json
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=infinity
+UMask=0007
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/supervisor-agent
+
+[Install]
+WantedBy=multi-user.target

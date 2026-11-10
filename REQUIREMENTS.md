@@ -6,7 +6,7 @@
   - Support the iterative research harness, llama-server-pool, the supervisor itself, and additional projects without restricting supervision to a fixed set of project types.
   - Supervise the environment as a whole: identify general or system issues, evaluate researcher performance, choose and guide research, and identify improvements across the agent ecosystem.
   - Implement the backend first. Defer the frontend until the backend is implemented and settled.
-  - At this stage, document requirements only; do not implement the backend, frontend, or changes to existing projects.
+  - Implement the backend under these requirements. Frontend work and daily backup installation remain deferred.
   - Record prerequisites for existing services separately in [EXTERNAL_SERVICE_REQUIREMENTS.md](EXTERNAL_SERVICE_REQUIREMENTS.md), so those services can be updated independently first.
 
 - **Independent services and durable state**
@@ -15,6 +15,7 @@
   - Use small structured operational metadata for identifiers, relationships, priorities, execution state, inbox handling, and artifact references.
   - Store flexible research content and user communications as ordinary files; use SQLite for durable operational metadata and events.
   - Preserve independent service operation even though agent execution is serialized across the environment.
+  - Use cooperative coordination: normal project starts/resumes go through The Supervisor; direct `irh run` is for maintenance while supervisor dispatch is stopped. Do not add a shared execution-lock requirement to the harness.
 
 - **General agent capabilities and operating model**
   - Operate as a regular shell-using agent under the existing dedicated Unix account used for the LLM agents.

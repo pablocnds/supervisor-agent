@@ -1,0 +1,37 @@
+{
+  "state_root": "/var/lib/supervisor-agent",
+  "socket": "/var/lib/supervisor-agent/daemon.sock",
+  "runtime_user": "rh-agent",
+  "operator_group": "irh-worker",
+  "harness_socket": "/var/lib/iterative-research-harness/daemon.sock",
+  "source_root": "/home/omega/llms",
+  "prompt_file": "/srv/supervisor/current/INITIAL_PROMPT.md",
+  "delegate_prompt_file": "/srv/supervisor/current/DELEGATE_PROMPT.md",
+  "compaction_prompt_file": "/srv/supervisor/current/COMPACTION_PROMPT.md",
+  "hours": [0, 4, 8, 12, 16, 20],
+  "timezone": "UTC",
+  "poll_seconds": 5,
+  "reminder_seconds": 1800,
+  "delegate_seconds": 14400,
+  "request_warning_seconds": 1800,
+  "recent_alert_limit": 10,
+  "shell_output_bytes": 24000,
+  "model": {
+    "base_url": "http://100.97.90.14:3000",
+    "profile": "qwen38-flash-next-q4xl-mtp-agent-128k",
+    "key_file": "/var/lib/iterative-research-harness/model.key",
+    "context_window": 131072,
+    "compact_tokens": 98304,
+    "output_tokens": 16384,
+    "temperature": 1.0,
+    "request_timeout_seconds": 3600,
+    "cache_warning_ratio": 0.8,
+    "extra": {}
+  },
+  "search": {
+    "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa",
+    "key_file": "/var/lib/iterative-research-harness/exa.key",
+    "tools": ["web_search_exa", "web_fetch_exa"]
+  },
+  "hidden_paths": ["/home/omega/.local/state/irh-deploy-backups", "/home/omega/.ssh", "/home/omega/.aws"]
+}

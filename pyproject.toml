@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "the-supervisor"
+version = "0.1.0"
+description = "Local research environment supervision"
+requires-python = ">=3.12"
+dependencies = ["httpx>=0.28,<1", "mcp>=2.2,<3", "pydantic>=2.10,<3", "starlette>=0.46,<1", "uvicorn>=0.34,<1", "jsonschema>=4.19,<5"]
+
+[project.scripts]
+supervisorctl = "supervisor_agent.cli:main"
+supervisor-daemon = "supervisor_agent.daemon:main"
+supervisor-monitor = "supervisor_agent.monitor:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/supervisor_agent"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]

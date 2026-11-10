@@ -1,0 +1,1 @@
+Summarize this history for exact continuation. Preserve the current task, decisions, evidence paths, measurements, failures, uncertainty, open work, and tool state. Distinguish completed operations from proposed or interrupted ones. Keep useful findings and references concise. Do not invent facts.

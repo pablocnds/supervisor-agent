@@ -1,0 +1,20 @@
+[Unit]
+Description=Temporary read-only Supervisor lifecycle monitor
+After=network-online.target tailscaled.service supervisor-agent.service
+Wants=network-online.target supervisor-agent.service
+
+[Service]
+Type=simple
+User=rh-agent
+Group=irh-worker
+ExecStart=/srv/supervisor/current/.venv/bin/supervisor-monitor --host __TAILSCALE_IP__ --port 8766
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+UMask=0007
+
+[Install]
+WantedBy=multi-user.target
