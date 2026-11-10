@@ -8,7 +8,8 @@ from datetime import time as day_time
 from zoneinfo import ZoneInfo
 
 from .agent import Agent, Paused
-from .config import write_json
+from .config import write_json, write_text
+from .context import changes_since, harness_brief
 from .harness import Harness
 from .store import now
 
@@ -25,6 +26,11 @@ class Runtime:
         self.phase = "idle"
         self.started_at = now()
         self.snapshot = {"health": {}, "projects": {}}
+        seeds = config.prompt_file.parent / "docs" / "agent-notes"
+        for template in sorted(seeds.glob("*.md")):
+            destination = self.store.note_path(template.name)
+            if not destination.exists():
+                write_text(destination, template.read_text())
 
     def environment_map(self):
         c = self.config
@@ -47,33 +53,66 @@ class Runtime:
             "- Shell calls are synchronous: children die when the call ends, even with nohup/setsid/disown. "
             "Each call has a fresh /tmp; use the execution workspace for files needed by later calls.\n"
             "- Research line/project directories accept free-form notes through supervisorctl note. "
-            "Use its CLI/API for metadata and communications; do not edit live service databases."
+            "Use its CLI/API for metadata and communications; do not edit live service databases.\n"
+            f"- Durable operations and improvement notes: {c.state_root}/notes. "
+            "Update with supervisorctl note environment --file FILE --name NAME --replace. "
+            "Project notes use catalog IDs; harness operations use backend_id."
         )
 
     async def start_context(self, execution):
         inbox = self.store.one("inbox", execution["inbox_id"]) if execution["inbox_id"] else None
         project = self.store.one("projects", execution["project_id"]) if execution["project_id"] else None
+        observation = self.brief_observation()
+        previous = self.store.get("last_review")
+        notes = []
+        remaining = 6000
+        for note in self.store.notes():
+            with self.store.note_path(note["name"]).open() as stream:
+                excerpt = stream.read(min(2000, remaining))
+            notes.append({**note, "excerpt": excerpt, "truncated": len(excerpt.encode()) < note["bytes"]})
+            remaining -= len(excerpt)
+            if remaining <= 0:
+                break
+        communications = self.store.rows("SELECT * FROM communications ORDER BY rowid DESC LIMIT 3")
+        for communication in communications:
+            with open(communication["path"]) as stream:
+                communication["excerpt"] = stream.read(300)
+        alerts = self.store.rows(
+            "SELECT id,text,occurrences,state,execution_id,updated_at FROM inbox "
+            "WHERE kind='alert' ORDER BY updated_at DESC LIMIT ?",
+            (self.config.recent_alert_limit,),
+        )
+        for alert in alerts:
+            alert["truncated"] = len(alert["text"]) > 600
+            alert["text"] = alert["text"][:600]
         return {
             "execution_id": execution["id"],
             "trigger": execution["kind"],
             "task": execution["task"],
             "created_at": execution["created_at"],
-            "inbox": inbox,
+            "inbox": {k: v for k, v in inbox.items() if k != "text"} if inbox else None,
             "project": project,
             "selected_project": self.store.get("next_project"),
-            "harness": self.snapshot,
+            "harness": observation,
+            "changes_since_last_review": changes_since(previous, observation),
+            "previous_review": {k: v for k, v in previous.items() if k != "harness"} if previous else None,
+            "environment_notes": notes,
+            "recent_communications": communications,
             "catalog": self.store.rows(
-                "SELECT id,line_id,name,backend,priority,status,held FROM projects ORDER BY priority DESC LIMIT 50"
+                "SELECT id,line_id,name,backend,backend_id,priority,status,held FROM projects ORDER BY priority DESC LIMIT 50"
             ),
-            "recent_alerts": self.store.rows(
-                "SELECT id,text,occurrences,state,execution_id,updated_at FROM inbox "
-                "WHERE kind='alert' ORDER BY updated_at DESC LIMIT ?",
-                (self.config.recent_alert_limit,),
-            ),
+            "recent_alerts": alerts,
             "research_directory": str(self.store.research_path("project", project["id"]))
             if project
             else None,
         }
+
+    def brief_observation(self):
+        tracked = {
+            p["backend_id"]
+            for p in self.store.rows("SELECT backend_id FROM projects WHERE backend='harness'")
+        }
+        return harness_brief(self.snapshot, tracked)
 
     def status(self):
         return {
@@ -226,11 +265,22 @@ class Runtime:
     async def run_execution(self, execution):
         self.store.execution_state(execution["id"], "running")
         self.phase = "running"
+        observation = self.brief_observation()
         try:
             self.agent = self.agent_factory(self, execution)
             result = await self.agent.run()
             self.store.event("execution_result", {"text": result}, execution["id"])
             self.store.execution_state(execution["id"], "completed", self.agent.elapsed)
+            if execution["kind"] != "delegate":
+                self.store.set(
+                    "last_review",
+                    {
+                        "execution_id": execution["id"],
+                        "finished_at": now(),
+                        "result": result[:1200],
+                        "harness": observation,
+                    },
+                )
             if execution["kind"] == "delegate":
                 self.store.update_project(execution["project_id"], {"status": "complete"})
                 self.store.enqueue(

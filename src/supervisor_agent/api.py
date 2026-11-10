@@ -8,7 +8,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Route
 
-from .config import secret
+from .config import secret, write_text
 from .store import Conflict, now
 
 
@@ -61,6 +61,15 @@ def app(runtime):
     async def communication(request):
         value = store.one("communications", request.path_params["id"])
         return PlainTextResponse(Path(value["path"]).read_text(), media_type="text/markdown")
+
+    async def notes(request):
+        return JSONResponse(store.notes())
+
+    async def note(request):
+        path = store.note_path(request.path_params["name"])
+        if not path.is_file():
+            raise KeyError("Unknown note")
+        return PlainTextResponse(path.read_text(), media_type="text/markdown")
 
     async def pool(request):
         import httpx
@@ -118,6 +127,7 @@ def app(runtime):
                 raise Conflict("Only the operator can enable dispatch")
             store.set("enabled", True)
             store.set("critical_failure", None)
+            store.set("critical_failure_alert_id", None)
             # Explicit enable acknowledges that interrupted dispatch has been inspected.
             store.set("dispatch_in_flight", None)
             result = runtime.status()
@@ -231,13 +241,16 @@ def app(runtime):
             store.set("selection_explicit", True)
             result = {"next_project": a.get("project_id")}
         elif operation == "note":
-            root = store.research_path(a["kind"], a["id"])
+            root = store.research_path(a["kind"], a.get("id"))
             name = a.get("name", "notes.md")
             if not name or Path(name).name != name or name in (".", ".."):
                 raise ValueError("Note name must be a filename")
+            if (root / name).is_symlink():
+                raise ValueError("Notes cannot be symlinks")
             text = bounded_text(a["text"], 4 * 1024 * 1024)
-            with (root / name).open("a" if a.get("append", True) else "w") as stream:
-                stream.write(text + "\n")
+            path = root / name
+            previous = path.read_text() if a.get("append", True) and path.exists() else ""
+            write_text(path, previous + text + "\n")
             result = {"path": str(root / name)}
         elif operation == "communicate":
             result = store.communicate(
@@ -275,6 +288,8 @@ def app(runtime):
             Route("/v1/events", events),
             Route("/v1/action", action, methods=["POST"]),
             Route("/v1/communications/{id}/markdown", communication),
+            Route("/v1/notes", notes),
+            Route("/v1/notes/{name}", note),
             Route("/v1/{collection}/{id}", detail),
             Route("/v1/{collection}", collection),
         ],

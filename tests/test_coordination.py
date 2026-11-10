@@ -203,3 +203,70 @@ async def test_no_overlap_between_inbox_items(runtime):
     await runtime.step()
     await runtime.task
     assert len(calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_completion_review_links_negative_publication_then_selects_next_bounded_run(runtime):
+    store = runtime.store
+    line = store.create_line("Research")
+    runtime.harness.add("finished", phase="complete")
+    runtime.harness.add("next", phase="ready")
+    finished = store.create_project("Negative result", "harness", line_id=line["id"], backend_id="finished")
+    following = store.create_project(
+        "Small follow-up", "harness", line_id=line["id"], backend_id="next", max_iterations=1
+    )
+    store.set("enabled", True)
+    store.set("next_project", finished["id"])
+    runtime.harness.feed["finished"] = [
+        {"seq": 1, "at": now(), "kind": "project_completed", "data": {}},
+        {"seq": 2, "at": now(), "kind": "run_stopped", "data": {"state": "completed"}},
+    ]
+
+    class ReviewAgent:
+        def __init__(self, owner, execution):
+            self.id, self.execution = execution["id"], execution
+            self.elapsed, self.operation, self.last_progress = 1, None, "review"
+
+        async def run(self):
+            assert not runtime.harness.active
+            assert store.one("inbox", self.execution["inbox_id"])["kind"] == "completion"
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app(runtime)),
+                base_url="http://test",
+                headers={"x-supervisor-execution": self.id},
+            ) as client:
+                for action in [
+                    {
+                        "operation": "publication_link",
+                        "project_id": finished["id"],
+                        "publication_id": "negative-paper",
+                        "reference": "/archive/negative-paper",
+                    },
+                    {
+                        "operation": "note",
+                        "kind": "environment",
+                        "name": "improvements.md",
+                        "text": "Negative finding preserved; next comparison is deliberately small.",
+                    },
+                    {"operation": "project_update", "id": following["id"], "values": {"priority": 50}},
+                    {
+                        "operation": "communicate",
+                        "markdown": "The negative result is archived; a focused follow-up is selected.",
+                    },
+                    {"operation": "select", "project_id": following["id"]},
+                ]:
+                    response = await client.post("/v1/action", json=action)
+                    assert response.status_code == 200, response.text
+            return "Reviewed and selected next work"
+
+    runtime.agent_factory = ReviewAgent
+    await runtime.step()
+    await runtime.task
+    assert len(store.rows("SELECT * FROM executions")) == 1
+    assert len(store.rows("SELECT * FROM publications")) == 1
+    reply = store.rows("SELECT * FROM communications")[0]
+    assert reply["request_id"]
+    assert store.one("inbox", reply["request_id"])["state"] == "handled"
+    assert not runtime.harness.starts
+    await runtime.step()
+    assert runtime.harness.starts == [("next", False, 1)]

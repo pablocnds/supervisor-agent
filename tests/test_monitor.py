@@ -23,7 +23,9 @@ def test_monitor_only_forwards_whitelisted_gets():
             app.state.harness = mock
             page = client.get("/")
             assert page.status_code == 200
-            assert "Lifecycle test" in page.text
+            assert "temporary read-only monitor" in page.text.lower()
+            assert client.get("/data/notes").status_code == 200
+            assert client.get("/data/note/improvements.md").status_code == 200
             assert client.get("/data/status").status_code == 200
             assert client.get("/data/events?after=7&limit=100&operation=enable").status_code == 200
             assert client.get("/harness/project/publications/pub/paper").text == "# Findings"

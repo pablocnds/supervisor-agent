@@ -1,0 +1,23 @@
+{
+  "previous_packet_characters": 10109,
+  "new_packet_characters": 8096,
+  "section_characters": {
+    "execution_id": 34,
+    "trigger": 9,
+    "task": 77,
+    "created_at": 34,
+    "inbox": 4,
+    "project": 4,
+    "selected_project": 34,
+    "harness": 1246,
+    "changes_since_last_review": 253,
+    "previous_review": 4,
+    "environment_notes": 3577,
+    "recent_communications": 1645,
+    "catalog": 291,
+    "recent_alerts": 606,
+    "research_directory": 4
+  },
+  "previous_packet_tokens": 4358,
+  "new_packet_tokens": 2878
+}

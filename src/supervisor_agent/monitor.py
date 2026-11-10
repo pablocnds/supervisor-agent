@@ -58,6 +58,7 @@ def create_app(supervisor_socket, harness_socket):
             "inbox",
             "communications",
             "publications",
+            "notes",
         }:
             return JSONResponse({"error": "Unknown read-only collection"}, 404)
         params = {
@@ -72,6 +73,13 @@ def create_app(supervisor_socket, harness_socket):
             request,
             request.app.state.supervisor,
             f"/v1/communications/{request.path_params['item']}/markdown",
+        )
+
+    async def note(request):
+        from urllib.parse import quote
+
+        return await forward(
+            request, request.app.state.supervisor, "/v1/notes/" + quote(request.path_params["name"], safe="")
         )
 
     async def harness_projects(request):
@@ -98,6 +106,7 @@ def create_app(supervisor_socket, harness_socket):
         routes=[
             Route("/", index),
             Route("/data/communication/{item}", communication),
+            Route("/data/note/{name}", note),
             Route("/data/{name}", collection),
             Route("/harness/projects", harness_projects),
             Route("/harness/{item}/publications/{publication}/paper", paper),

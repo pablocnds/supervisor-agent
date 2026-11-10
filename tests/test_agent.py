@@ -167,6 +167,9 @@ async def test_compaction_preserves_tool_batch_and_receipts(runtime):
         if request.url.path.endswith("input_tokens"):
             large = any(m.get("content") == "0" for m in payload["messages"])
             return httpx.Response(200, json={"input_tokens": 100000 if large else 100})
+        assert payload["messages"][:-1] == [{"role": "system", "content": "identity"}, *messages]
+        assert payload["tools"] == []
+        assert payload["tool_choice"] == "none"
         return httpx.Response(
             200,
             json={"choices": [{"finish_reason": "stop", "message": {"content": "Findings and open work"}}]},

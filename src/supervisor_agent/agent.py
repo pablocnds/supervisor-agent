@@ -212,6 +212,8 @@ class Agent:
                                     "name": name,
                                     "elapsed_seconds": time.monotonic() - self.operation["started"],
                                     "result": result,
+                                    "ok": not result.get("is_error", False)
+                                    and result.get("exit_code", 0) == 0,
                                 },
                                 self.id,
                             )
@@ -306,21 +308,34 @@ class Agent:
                 cut -= 1
             if len(messages) < 2:
                 raise RuntimeError("Initial prompt/tool definitions exceed context threshold")
+            parent = self.request()
+            overrides = dict(self.model.compaction.extra)
+            if "chat_template_kwargs" in overrides:
+                overrides["chat_template_kwargs"] = {
+                    **parent.get("chat_template_kwargs", {}),
+                    **overrides["chat_template_kwargs"],
+                }
+            instructions = (
+                self.session.get("compaction_prompt")
+                or (
+                    self.config.compaction_prompt_file
+                    or self.config.prompt_file.with_name("COMPACTION_PROMPT.md")
+                ).read_text()
+            )
             request = {
-                **self.model.extra,
-                **self.model.compaction.extra,
-                "model": self.model.profile,
+                **parent,
+                **overrides,
                 "messages": [
+                    *parent["messages"],
                     {
-                        "role": "system",
-                        "content": self.session.get("compaction_prompt")
-                        or (
-                            self.config.compaction_prompt_file
-                            or self.config.prompt_file.with_name("COMPACTION_PROMPT.md")
-                        ).read_text(),
+                        "role": "user",
+                        "content": "Context checkpoint. "
+                        + instructions
+                        + " Return only the continuation summary; do not use tools or continue the task. "
+                        "Recent messages will also be retained verbatim, so prioritize earlier decisions and evidence.",
                     },
-                    {"role": "user", "content": json.dumps(messages[:cut], ensure_ascii=False)},
                 ],
+                "tool_choice": "none",
                 "max_tokens": self.model.compaction.output_tokens,
                 "temperature": self.model.compaction.temperature,
                 "cache_prompt": True,
@@ -346,6 +361,7 @@ class Agent:
                     "answer_characters": len(summary) if isinstance(summary, str) else 0,
                     "reasoning_characters": len(message.get("reasoning_content") or ""),
                     "history_path": str(backup),
+                    "expected_cached_prefix_tokens": self.session.get("previous_input"),
                 }
                 invalid = (
                     not isinstance(summary, str)
@@ -363,6 +379,15 @@ class Agent:
                         "Compaction returned an empty, incomplete, or truncated summary "
                         f"(finish_reason={choice.get('finish_reason')!r}); history preserved at {backup}"
                     )
+                previous = self.session.get("previous_input")
+                cached = ((body.get("usage") or {}).get("prompt_tokens_details") or {}).get("cached_tokens")
+                if previous and not self.session.get("cache_reset") and cached is not None:
+                    if cached < previous * self.model.cache_warning_ratio:
+                        self.store.alert(
+                            "cache:" + self.model.profile,
+                            f"Unexpected compaction cache reuse in execution {self.id}: "
+                            f"{cached} cached tokens; preceding input {previous}.",
+                        )
             except Exception as error:
                 self.store.event(
                     "compaction_failed", {"error": str(error), "history_path": str(backup)}, self.id

@@ -38,6 +38,20 @@ Intentional compaction is an expected cache reset. Ordinary continuations append
 never insert current status, timestamps, steering, or reminders into earlier history. Cache persistence
 across model unloads/session switches is not guaranteed; unexpected reuse failures become automated inbox alerts.
 
+The summarization call itself now shares the parent's prompt/tools/history and
+appends a checkpoint request. Only continuation after swapping in the validated
+summary resets the context. On the installed model, a live probe reused 5,203 of
+5,248 summary input tokens, with no reasoning output.
+
+New task packets include changes since the last successful review, recent user
+communications, compact model/progress observations and excerpts of durable
+environment notebooks. Full sessions, alerts and artifacts remain readable.
+The initial prompt (about 420 words) nudges small experiment scope, early useful
+findings, short routine reviews and change-driven communications. These are soft
+behavioral choices: no 30-minute hard cap, communication schema, automatic
+semantic deduplication or forced improvement workflow is imposed. Tune after
+observing the next run rather than assuming the prompt changes guarantee behavior.
+
 General settings are loaded when the daemon starts. Restart after changing configuration, using the
 safe stop procedure. Prompt files are read for each new execution, but immutable release files should
 be changed through an operator-built release. The backend records streaming output and provider timing

@@ -34,7 +34,11 @@ harness sessions is not reconstructed.
 supports carrying decisions and remaining work through compaction, with durable
 notes outside the prompt. Here the recent tool-complete suffix is retained,
 full histories are archived, and agents can inspect original artifacts through
-the shell. Avoiding a fresh full-history prefill remains a future optimization.
+the shell. Summary requests now reuse the original system prompt, tools and
+conversation, appending the summary instruction as a user message and disabling
+tool calls. This preserves the cached prefix on the installed stack; replacing
+history after a validated summary remains an intentional cache reset. See the
+[efficiency follow-up](reviews/2026-11-10/efficiency/implementation.md).
 
 ## Failure behavior
 

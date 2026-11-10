@@ -24,7 +24,7 @@ class Store:
     def __init__(self, root: Path):
         self.root = root
         root.mkdir(parents=True, exist_ok=True, mode=0o770)
-        for name in ("executions", "research", "communications", "observations"):
+        for name in ("executions", "research", "communications", "observations", "notes"):
             (root / name).mkdir(exist_ok=True)
         self.db = sqlite3.connect(root / "state.sqlite3")
         self.db.row_factory = sqlite3.Row
@@ -152,6 +152,7 @@ class Store:
         if critical:
             self.set("enabled", False)
             self.set("critical_failure", text)
+            self.set("critical_failure_alert_id", value["id"])
         return value
 
     def create_execution(self, kind, task, project_id=None, inbox_id=None):
@@ -186,6 +187,17 @@ class Store:
                 (now(), alert["text"] + f"\n\nResolved by {actor}: {resolution}", item),
             )
         self.event("alert_resolved", {"id": item, "resolution": resolution, "actor": actor})
+        critical_id = self.get("critical_failure_alert_id")
+        if critical_id is None and self.get("critical_failure"):
+            # Older releases stored the failure text but not its alert identity.
+            latest = self.rows(
+                "SELECT json_extract(data,'$.id') AS id FROM events WHERE kind='alert' "
+                "AND json_extract(data,'$.critical')=1 ORDER BY seq DESC LIMIT 1"
+            )
+            critical_id = latest[0]["id"] if latest else None
+        if critical_id == item:
+            self.set("critical_failure", None)
+            self.set("critical_failure_alert_id", None)
         return self.one("inbox", item)
 
     def execution_state(self, item, state, elapsed=None, error=None):
@@ -212,10 +224,36 @@ class Store:
             )
 
     def research_path(self, kind, item):
+        if kind == "environment":
+            if item:
+                raise ValueError("Environment notes do not take a project/line ID")
+            return self.root / "notes"
+        if kind not in ("line", "project") or not item:
+            raise ValueError("A line/project ID is required")
         self.one("lines" if kind == "line" else "projects", item)
         path = self.root / "research" / ("lines" if kind == "line" else "projects") / item
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    def note_path(self, name):
+        if not name or Path(name).name != name or name in (".", ".."):
+            raise ValueError("Note name must be a filename")
+        path = self.root / "notes" / name
+        if path.is_symlink():
+            raise ValueError("Notes cannot be symlinks")
+        return path
+
+    def notes(self):
+        return [
+            {
+                "name": path.name,
+                "path": str(path),
+                "bytes": path.stat().st_size,
+                "updated_at": datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(),
+            }
+            for path in sorted((self.root / "notes").iterdir())
+            if path.is_file() and not path.is_symlink()
+        ]
 
     def create_line(self, name, description="", meta=False):
         item = identifier()

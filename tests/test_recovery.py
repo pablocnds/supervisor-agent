@@ -15,6 +15,7 @@ from supervisor_agent.api import app
 async def test_bad_compaction_preserves_history_and_diagnostics(runtime, content, finish):
     runtime.store.set("enabled", True)
     agent = Agent(runtime, runtime.store.create_execution("routine", "Review"))
+    agent.model.extra = {"chat_template_kwargs": {"preserve_thinking": False}}
     agent.session = {
         "prompt": "identity",
         "tools": [],
@@ -29,7 +30,9 @@ async def test_bad_compaction_preserves_history_and_diagnostics(runtime, content
     def respond(request):
         payload = json.loads(request.content)
         if request.url.path.endswith("input_tokens"):
-            return httpx.Response(200, json={"input_tokens": 100000 if payload.get("tools") == [] else 1000})
+            return httpx.Response(
+                200, json={"input_tokens": 1000 if payload.get("tool_choice") == "none" else 100000}
+            )
         requests.append(payload)
         return httpx.Response(
             200,
@@ -53,6 +56,12 @@ async def test_bad_compaction_preserves_history_and_diagnostics(runtime, content
         assert len(requests) == 1
         assert requests[0]["reasoning_effort"] == "none"
         assert requests[0]["chat_template_kwargs"]["enable_thinking"] is False
+        assert requests[0]["chat_template_kwargs"]["preserve_thinking"] is False
+        assert requests[0]["messages"][:-1] == [
+            {"role": "system", "content": "identity"},
+            *original["messages"],
+        ]
+        assert requests[0]["tools"] == original["tools"]
         backup = next((agent.directory / "compactions").glob("*.json"))
         assert json.loads(backup.read_text()) == original
         event = next(e for e in runtime.store.events() if e["kind"] == "compaction_finished")
@@ -158,6 +167,7 @@ async def test_resolving_alert_cancels_queued_investigation_but_does_not_enable(
         assert result.json()["state"] == "resolved"
     assert store.one("executions", job["id"])["state"] == "cancelled"
     assert not store.get("enabled")
+    assert store.get("critical_failure") is None
     runtime.queue_cycle(routine=True)
     assert len(store.rows("SELECT * FROM executions WHERE kind='inbox'")) == 1
     store.alert("startup", "new failure")
@@ -170,6 +180,18 @@ def test_active_alert_investigation_cannot_be_resolved(runtime):
     runtime.store.execution_state(job["id"], "running")
     with pytest.raises(ValueError, match="active investigation"):
         runtime.store.resolve_alert(alert["id"], "Not resolved yet")
+
+
+def test_resolving_old_alert_does_not_acknowledge_new_critical_failure(runtime):
+    store = runtime.store
+    old = store.alert("old", "Earlier failure", critical=True)
+    current = store.alert("current", "Current failure", critical=True)
+    store.resolve_alert(old["id"], "Earlier incident fixed")
+    assert store.get("critical_failure") == "Current failure"
+    store.set("critical_failure_alert_id", None)  # Legacy persisted state.
+    store.resolve_alert(current["id"], "Current incident fixed")
+    assert store.get("critical_failure") is None
+    assert not store.get("enabled")
 
 
 @pytest.mark.asyncio

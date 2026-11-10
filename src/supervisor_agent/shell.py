@@ -76,6 +76,8 @@ class Shell:
             "/bin/bash",
             "--noprofile",
             "--norc",
+            "-o",
+            "pipefail",
             "-c",
             command,
         ]

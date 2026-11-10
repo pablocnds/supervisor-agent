@@ -105,6 +105,10 @@ def secret(path: Path) -> str:
 
 
 def write_json(path: Path, value):
+    write_text(path, json.dumps(value, ensure_ascii=False, indent=2))
+
+
+def write_text(path: Path, value: str):
     import os
     import uuid
 
@@ -112,7 +116,7 @@ def write_json(path: Path, value):
     staging = path.with_name(f".{path.name}-{uuid.uuid4().hex}")
     try:
         with staging.open("x") as stream:
-            json.dump(value, stream, ensure_ascii=False, indent=2)
+            stream.write(value)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(staging, path)

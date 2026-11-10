@@ -118,3 +118,21 @@ Backups remain deferred. Before changing deployed code, stop dispatch and wait f
 
 See [reasoning-and-recovery.md](reasoning-and-recovery.md) for summary settings,
 startup readiness, alert resolution, observed project status, and experiment recovery.
+
+Environment-wide notebooks live under `notes/`. They are ordinary Markdown with
+no required fields or workflow. Startup seeds the operations/improvement notes
+only when absent; agent and operator edits survive restarts and upgrades.
+
+```sh
+supervisorctl note environment --file findings.md --name improvements.md --replace
+```
+
+The shell can read these files directly. Frontend reads use `GET /v1/notes`
+(names, paths, sizes and modification times) and `GET /v1/notes/NAME` (Markdown).
+The temporary monitor exposes these through its read-only notebook pane.
+Writes and replacements are atomic. Line/project notes retain their existing
+syntax and archive locations.
+
+Resolving the current critical alert clears its active failure marker while
+keeping dispatch disabled. Resolving an older alert cannot acknowledge a newer
+failure. Re-enabling work remains a separate operator action.

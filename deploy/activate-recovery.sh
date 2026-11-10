@@ -33,12 +33,21 @@ for attempt in $(seq 1 30); do
 done
 runuser -u omega -- "$SUPERVISOR_RELEASE/.venv/bin/python" \
   "$SUPERVISOR_RELEASE/docs/reviews/2026-11-10/recovery/apply_ea1_recovery.py"
+CHECK_FAILURE=0
+EFFICIENCY="$SUPERVISOR_RELEASE/docs/reviews/2026-11-10/efficiency"
+if test -f "$EFFICIENCY/prepare_guidance.py"; then
+  runuser -u omega -- "$SUPERVISOR_RELEASE/.venv/bin/python" "$EFFICIENCY/prepare_guidance.py"
+  runuser -u omega -- "$SUPERVISOR_RELEASE/.venv/bin/python" "$EFFICIENCY/acknowledge_reviewed_alerts.py"
+  CHECK_FAILURE=1
+fi
 "$SUPERVISOR_RELEASE/.venv/bin/supervisorctl" status | python3 -c '
 import json,sys
 s=json.load(sys.stdin)
 assert not s["enabled"] and not s["active_execution"]
 assert all(p["execution"]["state"] != "running" for p in s["projects"])
+if sys.argv[1] == "1":
+    assert not s["critical_failure"], "A new failure needs operator inspection"
 print("Updated services are running. Supervisor dispatch is disabled; research remains paused.")
-'
+' "$CHECK_FAILURE"
 echo "Supervisor release: $SUPERVISOR_RELEASE"
 echo "Harness release: $HARNESS_RELEASE"
