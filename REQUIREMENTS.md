@@ -1,0 +1,179 @@
+# The Supervisor — Software Requirements
+
+- **Purpose and scope**
+  - Name the higher-level supervising agent **The Supervisor**.
+  - Supervise the LLM environment and its projects, reducing the need for the user to choose work and supervise improvements manually.
+  - Support the iterative research harness, llama-server-pool, the supervisor itself, and additional projects without restricting supervision to a fixed set of project types.
+  - Supervise the environment as a whole: identify general or system issues, evaluate researcher performance, choose and guide research, and identify improvements across the agent ecosystem.
+  - Implement the backend first. Defer the frontend until the backend is implemented and settled.
+  - At this stage, document requirements only; do not implement the backend, frontend, or changes to existing projects.
+  - Record prerequisites for existing services separately in [EXTERNAL_SERVICE_REQUIREMENTS.md](EXTERNAL_SERVICE_REQUIREMENTS.md), so those services can be updated independently first.
+
+- **Independent services and durable state**
+  - Keep The Supervisor, the iterative research harness, llama-server-pool, and other services independently operated, with communication through their supported CLIs or APIs.
+  - Keep each service authoritative for its own lifecycle and state; do not bypass its control interface by directly modifying its database or private runtime files.
+  - Use small structured operational metadata for identifiers, relationships, priorities, execution state, inbox handling, and artifact references.
+  - Store flexible research content and user communications as ordinary files; use SQLite for durable operational metadata and events.
+  - Preserve independent service operation even though agent execution is serialized across the environment.
+
+- **General agent capabilities and operating model**
+  - Operate as a regular shell-using agent under the existing dedicated Unix account used for the LLM agents.
+  - Keep the design open and general, allowing the agent to investigate unfamiliar issues and projects using general tools.
+  - Prefer direct shell inspection of known locations over purpose-specific tools for reading particular directories, artifacts, or project information.
+  - Provide unrestricted read access to all environment-project artifacts and current source code for investigation, subject to the separately stated preference that backups remain inaccessible.
+  - Assume a capable, trusted agent and use minimal guardrails, while limiting filesystem writes and ordinary internet access.
+  - Consider lightweight Bubblewrap sandboxing without making normal investigation and supervision unnecessarily restrictive.
+  - Provide internet search capabilities equivalent to those available to the iterative research harness, with internet access through the designated search tools rather than unrestricted shell networking.
+  - Use shell, search, and a general communication mechanism as the primary agent capabilities.
+  - Provide approved writable work/state areas while keeping project source, deployed services, and other investigation inputs read-only as appropriate.
+  - The Supervisor may suggest software, configuration, or deployment changes to the user; it must not modify running services or deploy changes to itself or other services autonomously.
+  - Keep prompts and procedures simple. Give the agent context, tools, and resource locations instead of exhaustive instructions and task-specific guardrails.
+  - Add more guidance or restrictions only in response to observed difficulties or repeated mistakes.
+
+- **Initial prompts and execution context**
+  - Give every execution an initial agent prompt with a short identity/remit, general environment context, resource locations, and concise instructions for working with the available services and tools.
+  - Keep the invariant prefix stable and separate from the variable trigger reason, task, and compact current context, allowing reuse of its model cache.
+  - Supply compact relevant status and changes at execution start; let the agent investigate details through the shell rather than preloading the whole environment.
+  - Make timing limitations explicit: prompt prefill is slow, longer contexts are increasingly expensive, and the current model's generation becomes especially slow around 128k tokens of context.
+  - Avoid unbounded context growth; keep routine and unrelated inbox executions separate, and retain resumable context for continuing investigations.
+  - Use a configurable context-management threshold initially set to 96k tokens (98,304). Measure the complete model input, including the system prompt and tool definitions, and compact at a valid conversation boundary before the next ordinary request would reach that threshold.
+  - Preserve recent context and durable findings during compaction, keep tool calls/results coherent, and record compaction as an expected cache reset.
+  - Append steering, reminders, and new information after existing conversation history at completed-turn boundaries; do not inject them into the beginning or middle of an existing conversation.
+  - Use [INITIAL_PROMPT.md](INITIAL_PROMPT.md) as the first version of The Supervisor's stable initial prompt. Populate its short environment map from deployment configuration and append the trigger/task/current context separately.
+  - Include source/documentation paths, state and archive roots, writable work locations, and CLI/API entry points in that environment map; keep live status and other changing information in the variable context.
+  - Keep the rendered prefix unchanged within a conversation. Update prompt wording or configured locations for new executions when needed, rather than rewriting an active conversation's beginning.
+
+- **User input and research organization**
+  - Accept unstructured user notes, ideas, requests, and steering messages without requiring the user to supply a predefined project schema.
+  - Interpret those inputs and organize them into research lines and projects.
+  - Allow research lines, project groupings, plans, and priorities to evolve as experiments produce results.
+  - Track projects within their research lines, including their progress, current state, and priority for future work.
+  - Allow the supervisor to update this organization and select which project should start or resume next.
+  - Support follow-up messages about earlier requests, findings, suggestions, and research.
+  - Retain durable links between research lines, projects, iterations, publications, user requests, and relevant findings.
+
+- **Project and process supervision**
+  - Inspect current processes, especially researcher agents, and analyze their progress and results.
+  - Start, stop, pause, resume, steer, or change supervised project execution through supported lifecycle interfaces, within the restriction against autonomous service/code changes.
+  - Allow intervention in related projects or processes when the investigation or environment state warrants it.
+  - Allow projects to be moved to lower priority, ended, or replaced by another project when their results are unpromising or resources are insufficient.
+  - Select the next project based on research priorities, observed progress, available resources, and expected value of further work.
+  - Support both starting new projects and continuing previously paused projects.
+  - When a supervisory check or intervention is complete, allow the selected next process to start or resume.
+  - Distinguish user-requested pauses from agent-requested pauses, and preserve user holds when scheduling work.
+  - Preserve progress of long-running work across controlled pauses and resumes, including the session, workspace, completed results, and required checkpoint state.
+  - Refine pause/stop behavior where necessary, particularly at synchronous tool boundaries; do not assume every experiment can be safely interrupted at an arbitrary instant.
+  - Plan around synchronous tools. The user intends to remove the existing asynchronous tool; do not expand the design around asynchronous external-job orchestration.
+  - Provide `supervisorctl` for administration and supported operations on state, inbox messages, steering, project selection, and global supervisor control.
+  - Trust the agent to conclude its execution normally when its task is complete; let the backend record completion and continue dispatch from the saved work-selection state without requiring structured final prose.
+  - Let the user steer the agent to conclude early through an ordinary appended message.
+  - Do not add a dedicated `finish`, `yield`, or manual soft-stop-current-task command that ends only The Supervisor's current task and automatically continues with other work.
+  - Start or resume the selected next agent only after the current execution has ended or acknowledged a safe pause and released execution ownership.
+
+- **Researcher agents and harness integration**
+  - Use iterative-harness-style researcher agents to perform the underlying research and experiments.
+  - Allow the supervisor to supply research goals, guidance, priorities, and execution scope to those researchers.
+  - Support supervisor-directed bounded investigations, including a single-iteration research loop.
+  - Allow the supervisor to evaluate researcher-agent performance and propose improvements to their behavior or supporting software.
+  - Require the independently updated iterative research harness to support supervision, bounded execution, append-only steering, time reminders, progress reporting, and publication production as detailed in the external-service requirements.
+
+- **Papers, publications, and research memory**
+  - Support research-line archives containing the main papers produced by researcher agents.
+  - Add a publication capability to the iterative research harness so that durable research knowledge does not depend solely on producing a separate main paper for every iteration.
+  - Distinguish iteration-level reports from self-contained publications that consolidate research findings when appropriate.
+  - Each publication must contain an introduction, methods, results, and conclusions, and may reference previous papers.
+  - Treat publications as internal knowledge artifacts for continuing research, with no requirement for real-world publication or submission.
+  - Make prior papers and publications available to inform later research and supervisory decisions.
+  - Allow the project and research-line organization to be updated in response to findings recorded in these artifacts.
+  - Preserve and publish negative results in the research archive.
+  - Preserve publication versions and their references to supporting evidence.
+
+- **Triggers and routine checks**
+  - Maintain a durable inbox for user messages, automated alerts, and other addressable work, with their origin clearly recorded.
+  - Handle each addressable inbox item in a separate agent execution; keep the routine system check in its own execution as well.
+  - At every accepted routine tick, address the whole pending inbox through separate, sequential executions and perform the separate routine check.
+  - Use predictable calendar-aligned triggers, initially at 00:00, 04:00, 08:00, 12:00, 16:00, and 20:00 each day; 24:00 means 00:00 on the following day.
+  - Make the schedule configurable, including a future change to eight-hour intervals, rather than measuring each interval from the end of the preceding execution.
+  - Interpret schedule hours in an explicit timezone; use UTC initially to match the current environment.
+  - If a previous supervisor execution/dispatch cycle is still active at the next scheduled tick, skip that tick rather than launching overlapping work or accumulating duplicate routine checks.
+  - On routine execution, inspect current processes, assess project progress and environment conditions, and decide whether intervention or scheduling changes are warranted.
+  - Keep routine checks short when work is progressing normally and no intervention is needed.
+  - Ordinary scheduled checks should normally take no more than 30 minutes; this is guidance, not a hard execution cap.
+  - Let the user choose whether a submitted message triggers execution immediately or waits for the next routine check.
+  - Read deferred user messages during the next routine execution.
+  - Trigger the supervisor when an iterative-harness research project finishes.
+  - After completion, judge the results, update the project and research line, and decide what should happen next.
+  - Serialize immediate and completion-triggered work with other executions; an immediate trigger must not cause concurrent supervisor/researcher agents.
+
+- **Meta-research and ecosystem improvements**
+  - Support a dedicated meta-project research line for investigating and improving the LLM environment.
+  - Allow that line to contain investigations into slow inference, poor research results, researcher performance, and improvements to the harness, llama-server-pool, or supervisor itself.
+  - Allow the supervisor to create, prioritize, start, follow, and evaluate such investigations.
+  - Keep watch for possible agent or infrastructure improvements and communicate suggestions to the user.
+  - Support the following workflow: a user asks for a short investigation of a newly released model as a replacement candidate; the supervisor reads the request immediately or at the next routine check, creates a high-priority meta-project, and can instruct the harness to run a single iteration of research and benchmarks.
+  - When that investigation is selected and completed, let the supervisor evaluate its output and produce a user communication.
+  - Delegate longer investigations to standalone projects with their own priorities instead of doing them inside ordinary supervisor checks.
+  - Prefer iterative-harness researchers for delegated work whenever their permissions and capabilities are sufficient.
+  - Add a **supervisor-delegate** agent for meta-project investigations that require The Supervisor's broader shell access.
+  - Give supervisor-delegate the same permissions as The Supervisor, with initial context oriented toward its investigation; it does not gain autonomous service-modification privileges.
+  - Restrict use of supervisor-delegate to meta-project investigations where its broader access is needed.
+  - Give supervisor-delegate lifecycle operations equivalent in intent to the iterative research harness: start, status, steering, safe pause, resume, and controlled stop/end.
+  - Give supervisor-delegate projects a configurable execution time limit, initially four hours. At that boundary, preserve progress, yield execution, and trigger The Supervisor to decide whether to resume, steer, reprioritize, or change projects.
+  - Keep the delegate time limit independent of the routine calendar schedule.
+  - Do not add quotas or other guardrails on meta-project work now; reconsider only if observed usage warrants it.
+
+- **Time awareness and resource management**
+  - Treat time as the most important resource when allocating work and supervising every agent, including the supervisor itself.
+  - Account for slow computation, particularly the cost of long prompt prefills, when planning and evaluating work.
+  - Account for substantial token-generation slowdown near 128k context even when prompt caching works correctly; that context size is a performance concern, not a target.
+  - Run only one supervisor, researcher, or supervisor-delegate agent at a time. Independent service daemons and lightweight monitoring may remain running.
+  - Give the currently executing agent the available CPU/GPU capacity regardless of purpose; do not introduce concurrent agent resource sharing for now.
+  - Notice work that takes disproportionately long and investigate or intervene when appropriate.
+  - Use progress, elapsed time, and resource availability when deciding whether to continue, reprioritize, pause, stop, or replace a project.
+  - Produce an agent-facing warning every 30 minutes of running time for supervisor/delegate executions and through the research harness for researchers.
+  - Include elapsed time and available progress information in each reminder, along with a concise reminder to spend time proportionately.
+  - Append a due reminder at the next completed-turn opportunity; do not rewrite conversation history or interrupt an in-flight model response to inject it.
+  - Use independent lightweight monitoring to observe execution progress, elapsed time, model speed, and related performance metrics between supervisor checks.
+  - Distinguish model loading/queueing, prompt processing, generation, tool execution, and waiting where measurements allow; do not label end-to-end request throughput as raw decoder speed.
+  - Preserve the ability to undertake useful long investigations while encouraging proportionate use of time.
+
+- **Model configuration and caching**
+  - Route model inference through llama-server-pool.
+  - Make the model/profile configurable so the supervisor's model can be changed.
+  - Initially use the same qwen-3.8-flash-next profile as the iterative research harness.
+  - Ensure the supervisor properly uses the model's prompt caching to avoid unnecessary repeated prefill work.
+  - Preserve unchanged conversation prefixes and stable tool definitions during continuations; do not rebuild earlier messages to apply steering or refresh status.
+  - Enable supported prompt caching and follow ordinary caching best practices; observe actual reuse through available metrics during continuations and normal session switching.
+  - Investigate unexpected cache failures and revise cache handling in response to evidence; do not add speculative cache-residency machinery or promise permanent cache retention at the outset.
+  - Log and alert on unexpected cache failures. Record expected cache resets or unavailable measurements distinctly so the agent can interpret them correctly.
+
+- **Alerts, failure recovery, and operator control**
+  - Log failures and unexpected cache-reuse failures, and add corresponding automated notifications to The Supervisor's inbox.
+  - Clearly label automated alerts as system-generated rather than user messages, and retain them for display in the future frontend.
+  - Consolidate repeated instances of the same alert within a scheduled tick into one notification, retaining occurrence counts and relevant timing/context.
+  - Include a concise recent-alert history and references to prior investigations/findings when presenting an alert, so recurring issues do not repeatedly trigger the same investigation.
+  - Provide independent failure recovery for scheduling, inbox state, and service coordination; persist handling state so restarts do not lose work or repeat completed actions unnecessarily.
+  - Assume the configured model is normally available. If it becomes unavailable, log and alert the critical failure and stop affected execution for the user to diagnose and fix.
+  - Treat other critical infrastructure failures as operator issues as well; do not require autonomous repair of running services or a fallback-model system.
+  - Provide a user action to stop The Supervisor altogether, including automatic supervisor/delegate dispatch, and require deliberate operator re-enablement before it runs again.
+  - A global stop requests a safe pause of active supervisor-owned work and prevents replacement work from starting. Expose `waiting to pause` until progress is saved and the pause is acknowledged; keep independent service daemons running.
+  - Routine checks, immediate triggers, and delegate time boundaries may likewise wait for a safe pause of an active experiment. Preserve progress rather than silently killing a long synchronous call to meet a trigger time.
+
+- **User communications and future frontend**
+  - Provide a general method for the supervisor to produce communications for the user, including answers, findings, suggestions, and research outcomes.
+  - Accept arbitrary Markdown as the communication body.
+  - Automatically attach a creation timestamp, communication identifier, and originating execution reference outside the Markdown body; retain related request/project references when available without requiring the agent to write metadata or follow a prose template.
+  - Keep user-facing messages concise and understandable within a few minutes, with follow-ups available when more detail is wanted.
+  - Do not constrain agent communications to fixed output structures or templates.
+  - Make backend communications, activity, project state, research organization, and archived papers available for the later frontend.
+  - In the later frontend, let the user communicate with the supervisor, steer work, and issue new requests such as investigating why a model is slow.
+  - In that frontend, support immediate or deferred handling of user messages.
+  - Show a live transcript of agent activity and its explanations of current work, along with suggestions and responses to user requests.
+  - Show the states of projects and research lines and provide access to their papers/publications archive.
+  - Show automated alerts and their recurrence/history distinctly from user messages and agent replies.
+
+- **Daily backups**
+  - Defer backup-job implementation until later; it is not a prerequisite for harness changes or initial supervisor implementation/testing.
+  - Back up project/research-line state and the papers/publications archive once per day.
+  - Run backups independently from The Supervisor and the research harness.
+  - Prefer a separate backup account or privileged service and backup storage inaccessible to agents.
