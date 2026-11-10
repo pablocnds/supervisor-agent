@@ -1,0 +1,98 @@
+{
+  "report": "/var/lib/iterative-research-harness/runtime/7eb9d6e9-4c34-400f-90f2-0af807be77b2/iteration/workspace/maintenance/verification-20261110T210056Z/verification.json",
+  "created_at": "2026-11-10T21:00:56.847978+00:00",
+  "workspace": "/var/lib/iterative-research-harness/runtime/7eb9d6e9-4c34-400f-90f2-0af807be77b2/iteration/workspace",
+  "input_sha256": {
+    "src/validate.py": "c0efef529c5e1ffc0a681b1d8fc1b9a1e1c67a06fd17e85dafb2cc44fd6e1527",
+    "src/refpy.py": "51c029b6ce469b08b986e80d581eb30964b2cb3e1c2cf24688d0c4c061f8351b",
+    "src/run_driver.py": "8ea6727f747080e277a623fe932c825db91ae1f10f74f533905d8b9dcfb136f7",
+    "src/ea1.c": "a8f213b62cc1bb0bd68e7bb4581e0480c9761bf0224f4f7fb7400ca2d4672a10",
+    "out/st.abl.tsv": "89c9f40f46dbd9da776435e5c2b5a3074a4aa0cbea765b8ecaee86b9298f1d61",
+    "out/st.census.tsv": "15d9e1b5a348c18bcfbba2b706bf7069dd64ad90563a9457a67dc4ec7b5e8cef",
+    "out/st.genomes.tsv": "f9a6dca8bf9502cfdb94322f9928c734a891f6c06df7de3946754130ce7d3fae",
+    "out/st.keys.tsv": "13f0996cd47d9adceba0da0795b12486f118af303ab2394e6b48d759025cdcfd"
+  },
+  "commands": [
+    {
+      "argv": [
+        "gcc",
+        "-O2",
+        "-std=gnu17",
+        "-Wall",
+        "-Wextra",
+        "-o",
+        "bin/ea1",
+        "src/ea1.c",
+        "-lm"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.7194,
+      "log": "build.log"
+    },
+    {
+      "argv": [
+        "bin/ea1",
+        "--selftest",
+        "--out",
+        "out/st",
+        "--n",
+        "400"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.0324,
+      "log": "selftest.log"
+    },
+    {
+      "argv": [
+        "bin/ea1",
+        "--task",
+        "mux6",
+        "--arm",
+        "sel_pars_on",
+        "--N",
+        "100",
+        "--T",
+        "60",
+        "--seed",
+        "99",
+        "--pres-every",
+        "10",
+        "--out",
+        "out/smoke"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.0166,
+      "log": "foreground-smoke.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "src/validate.py",
+        "out/st",
+        "out/smoke"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2666,
+      "log": "legacy-validation.log"
+    }
+  ],
+  "checks": {
+    "build": true,
+    "fresh_selftest": true,
+    "foreground_smoke": true,
+    "legacy_gates": true,
+    "generation_csv_columns": true,
+    "motif_csv_columns": true,
+    "no_instrument_fault": true,
+    "lineage_size": true,
+    "lineage_parents_precede_children": false
+  },
+  "scientific_validation": "not_established",
+  "binary_sha256": "57695c7d67db532f07c2cf009d8ffb67baa3951104806852f06d0d37145884c0",
+  "limitations": [
+    "Legacy G5c/G5d/G5g include vacuous assertions and do not establish their advertised properties.",
+    "Passing smoke checks does not establish motif semantics or the preregistered biological hypotheses.",
+    "Recorded foreground wall time is a small-run measurement, not an estimate for the full grid."
+  ],
+  "checks_passed": false
+}
