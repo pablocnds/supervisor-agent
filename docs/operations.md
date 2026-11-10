@@ -136,3 +136,25 @@ syntax and archive locations.
 Resolving the current critical alert clears its active failure marker while
 keeping dispatch disabled. Resolving an older alert cannot acknowledge a newer
 failure. Re-enabling work remains a separate operator action.
+
+For an operator-authorized clean restart with the original research request:
+
+```sh
+deploy/clean-start.sh --prepare
+sudo deploy/clean-start.sh
+```
+
+Preparation checks paused state, pins the exact previous operator message, and
+stages a committed Supervisor release. Activation safely stops both controllers
+and the monitor, verifies SQLite integrity, and moves the complete state trees to
+`~omega/.local/state/supervisor-agent-comparisons/TIMESTAMP/`. A same-filesystem
+rename preserves evidence without duplicating large datasets. The archive
+records releases, database hashes and original path mappings for comparison;
+it is inaccessible to the agent account. The same archive cannot be reused for
+a second reset.
+
+Fresh state retains configuration, referenced credentials and general operations
+notes. Old research, transcripts, alerts and project-specific notes remain in
+the archive. The script checks empty catalogs, starts the same monitor and
+submits the pinned message as ordinary use. This is separate from the historic
+`activate-recovery.sh`, which is tied to the archived project and alert IDs.
