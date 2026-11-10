@@ -167,7 +167,10 @@ async def test_compaction_preserves_tool_batch_and_receipts(runtime):
         if request.url.path.endswith("input_tokens"):
             large = any(m.get("content") == "0" for m in payload["messages"])
             return httpx.Response(200, json={"input_tokens": 100000 if large else 100})
-        return httpx.Response(200, json={"choices": [{"message": {"content": "Findings and open work"}}]})
+        return httpx.Response(
+            200,
+            json={"choices": [{"finish_reason": "stop", "message": {"content": "Findings and open work"}}]},
+        )
 
     await attach(agent, handler)
     await agent.compact()

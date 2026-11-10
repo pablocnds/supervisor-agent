@@ -55,7 +55,7 @@ options($('source'),[['supervisor','The Supervisor / delegates'],...hp.map(p=>[p
 options($('execution'),runs.slice().reverse().map(r=>[r.id,`${r.kind} · ${r.state} · ${r.id.slice(0,8)} · ${when(r.created_at)}`]),'All executions');$('execution').disabled=source!=='supervisor';
 options($('paperProject'),hp.map(p=>[p.id,p.name]));
 table('lines',lines,[['Line','name'],['Type',r=>r.meta?'Meta':'Research'],['Description','description']]);
-table('projects',projects,[['Project','name'],['Backend','backend'],['State',p=>p.held?'User hold':p.status],['Priority','priority'],['Line',p=>lines.find(l=>l.id===p.line_id)?.name||'Unassigned']]);
+table('projects',projects,[['Project','name'],['Backend','backend'],['Project state',p=>p.held?'User hold':p.status],['Execution',p=>p.execution?.state||'unknown'],['Execution detail',p=>p.execution?.blocked_by||p.execution?.pause_reason||''],['Priority','priority'],['Line',p=>lines.find(l=>l.id===p.line_id)?.name||'Unassigned']]);
 table('runs',runs.slice().reverse(),[['Created',r=>when(r.created_at)],['Kind','kind'],['State','state'],['Minutes',r=>(r.elapsed/60).toFixed(1)],['Task',r=>r.task.slice(0,500)],['Error','error']]);
 table('inbox',inbox.slice().reverse(),[['Received',r=>when(r.created_at)],['Origin','origin'],['Kind','kind'],['State','state'],['Count','occurrences'],['Text','text']]);
 await Promise.all([refreshLog(),replies(repliesData)]);$('connection').textContent='Updated '+new Date().toLocaleTimeString();}catch(error){$('connection').textContent='Connection issue';$('error').hidden=false;$('error').textContent=error.message}finally{busy=false}}

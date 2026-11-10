@@ -168,6 +168,26 @@ class Store:
                 )
         return self.one("executions", item)
 
+    def resolve_alert(self, item, resolution, actor="operator"):
+        alert = self.one("inbox", item)
+        if alert["kind"] != "alert":
+            raise ValueError("Inbox item is not an alert")
+        if alert["state"] == "resolved":
+            return alert
+        if alert["state"] == "assigned":
+            job = self.one("executions", alert["execution_id"])
+            if job["state"] == "running":
+                raise Conflict("Steer the active investigation before resolving its alert")
+            if job["state"] in ("queued", "paused", "failed"):
+                self.execution_state(job["id"], "cancelled", error="Alert resolved by operator")
+        with self.db:
+            self.db.execute(
+                "UPDATE inbox SET state='resolved',updated_at=?,text=? WHERE id=?",
+                (now(), alert["text"] + f"\n\nResolved by {actor}: {resolution}", item),
+            )
+        self.event("alert_resolved", {"id": item, "resolution": resolution, "actor": actor})
+        return self.one("inbox", item)
+
     def execution_state(self, item, state, elapsed=None, error=None):
         with self.db:
             self.db.execute(

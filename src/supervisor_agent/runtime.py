@@ -44,6 +44,8 @@ class Runtime:
             "Use --actor supervisor for harness steering and pause calls.\n"
             "- The shell has read-only host files, a writable execution workspace, and no internet. "
             "Its private process namespace shows local children; host process observations are under observations/.\n"
+            "- Shell calls are synchronous: children die when the call ends, even with nohup/setsid/disown. "
+            "Each call has a fresh /tmp; use the execution workspace for files needed by later calls.\n"
             "- Research line/project directories accept free-form notes through supervisorctl note. "
             "Use its CLI/API for metadata and communications; do not edit live service databases."
         )
@@ -95,7 +97,48 @@ class Runtime:
             "critical_failure": self.store.get("critical_failure"),
             "harness": self.snapshot,
             "schedule": {"hours": self.config.hours, "timezone": self.config.timezone},
+            "projects": [self.project_view(p) for p in self.store.rows("SELECT * FROM projects")],
         }
+
+    def project_view(self, project):
+        observed = {"state": "unknown", "blocked_by": None}
+        if project["backend"] == "harness":
+            backend = self.snapshot.get("projects", {}).get(project["backend_id"])
+            if backend:
+                control = backend["control"]
+                observed.update(
+                    state="complete" if backend["phase"] == "complete" else control["state"],
+                    backend_phase=backend["phase"],
+                    pause_reason=(control.get("pause_request") or {}).get("reason"),
+                )
+        else:
+            jobs = self.store.rows(
+                "SELECT state,error FROM executions WHERE project_id=? AND kind='delegate' ORDER BY rowid DESC LIMIT 1",
+                (project["id"],),
+            )
+            observed.update(
+                state=jobs[0]["state"] if jobs else "idle", error=jobs[0]["error"] if jobs else None
+            )
+        if not self.store.get("enabled", False):
+            observed["blocked_by"] = self.store.get("critical_failure") or "Supervisor dispatch is disabled"
+        return {**project, "execution": observed}
+
+    async def wait_for_harness(self):
+        import httpx
+
+        deadline = time.monotonic() + self.config.startup_timeout_seconds
+        while True:
+            try:
+                health = await self.harness.health()
+                if not health.get("ok"):
+                    raise RuntimeError("Harness health is not ready")
+                self.store.event("harness_ready", {})
+                return
+            except (httpx.ConnectError, httpx.ConnectTimeout, FileNotFoundError):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                await asyncio.sleep(min(1, remaining))
 
     def queue_cycle(self, routine=False):
         for message in self.store.rows(
@@ -320,15 +363,38 @@ class Runtime:
                                 fingerprint="completion:" + item,
                                 source_key=receipt,
                             )
-                    elif event["kind"] in ("model_prompt_cache_warning", "operator_intervention_required"):
+                    elif event["kind"] in (
+                        "model_prompt_cache_warning",
+                        "model_output_truncated",
+                        "operator_intervention_required",
+                    ):
                         self.store.alert(
                             f"harness:{item}:{event['kind']}",
                             f"Harness event {event['kind']} for project {item}: {json.dumps(event)}",
+                            critical=event["kind"] == "operator_intervention_required",
                             source_key=receipt,
                         )
                 cursor = event["seq"]
             self.store.set(cursor_key, cursor)
         self.snapshot = {"health": health, "projects": statuses}
+        for project in self.store.rows("SELECT * FROM projects WHERE backend='harness'"):
+            observed = statuses.get(project["backend_id"])
+            if not observed or project["status"] in ("complete", "ended"):
+                continue
+            if observed["phase"] == "complete":
+                self.store.update_project(project["id"], {"status": "complete"})
+            elif (
+                observed["control"]["state"] in ("running", "waiting_to_pause")
+                and project["status"] != "running"
+            ):
+                self.store.update_project(project["id"], {"status": "running"})
+            elif project["status"] == "running" and observed["control"]["state"] == "paused":
+                self.store.update_project(project["id"], {"status": "paused"})
+            elif (
+                project["status"] == "running"
+                and (observed["control"].get("run") or {}).get("state") == "completed"
+            ):
+                self.store.update_project(project["id"], {"status": "pending"})
         write_json(self.store.root / "observations" / "harness.json", self.snapshot)
         # Host process summaries are produced outside the private shell PID namespace.
         process = await asyncio.create_subprocess_exec(
@@ -393,6 +459,14 @@ class Runtime:
             self.store.set("monitor_since", self.started_at)
         calendar = asyncio.create_task(self.calendar_loop())
         try:
+            try:
+                await self.wait_for_harness()
+            except Exception as error:
+                self.store.alert(
+                    "infrastructure_failure",
+                    f"Startup readiness failed: {type(error).__name__}: {error}",
+                    True,
+                )
             while not self.stopping:
                 try:
                     await self.step()

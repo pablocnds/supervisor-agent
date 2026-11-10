@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 
 import httpx
 from jsonschema import validate
@@ -34,7 +35,8 @@ def tool(name, description, properties, required):
 BUILTINS = [
     tool(
         "shell",
-        "Run a synchronous shell command in the assigned workspace. No shell internet access.",
+        "Run a synchronous shell command. Children end with this call; nohup/disown do not persist jobs. "
+        "Each call has fresh /tmp; keep files in the persistent workspace. No shell internet access.",
         {"command": {"type": "string"}, "timeout_seconds": {"type": "number", "exclusiveMinimum": 0}},
         ["command"],
     ),
@@ -305,6 +307,8 @@ class Agent:
             if len(messages) < 2:
                 raise RuntimeError("Initial prompt/tool definitions exceed context threshold")
             request = {
+                **self.model.extra,
+                **self.model.compaction.extra,
                 "model": self.model.profile,
                 "messages": [
                     {
@@ -317,31 +321,55 @@ class Agent:
                     },
                     {"role": "user", "content": json.dumps(messages[:cut], ensure_ascii=False)},
                 ],
-                "max_tokens": min(4096, self.model.output_tokens),
-                "temperature": 0,
+                "max_tokens": self.model.compaction.output_tokens,
+                "temperature": self.model.compaction.temperature,
                 "cache_prompt": True,
             }
             if await self.count(request) + request["max_tokens"] >= self.model.context_window:
                 raise RuntimeError("History cannot fit in a compaction request")
+            backup = self.directory / "compactions" / f"{uuid.uuid4().hex}.json"
+            write_json(backup, self.session)
             self.operation = {"kind": "compaction", "started": time.monotonic()}
-            self.store.event("compaction_started", {}, self.id)
+            self.store.event("compaction_started", {"history_path": str(backup)}, self.id)
             try:
                 response = await self.client.post("/v1/chat/completions", json=request)
                 response.raise_for_status()
+                body = response.json()
+                choice = body["choices"][0]
+                message = choice["message"]
+                summary = message.get("content")
+                diagnostics = {
+                    "elapsed_seconds": time.monotonic() - self.operation["started"],
+                    "usage": body.get("usage"),
+                    "timings": body.get("timings"),
+                    "finish_reason": choice.get("finish_reason"),
+                    "answer_characters": len(summary) if isinstance(summary, str) else 0,
+                    "reasoning_characters": len(message.get("reasoning_content") or ""),
+                    "history_path": str(backup),
+                }
+                invalid = (
+                    not isinstance(summary, str)
+                    or not summary.strip()
+                    or choice.get("finish_reason") != "stop"
+                    or bool(message.get("tool_calls"))
+                )
                 self.store.event(
                     "compaction_finished",
-                    {
-                        "elapsed_seconds": time.monotonic() - self.operation["started"],
-                        "usage": response.json().get("usage"),
-                        "timings": response.json().get("timings"),
-                    },
+                    {**diagnostics, "ok": not invalid},
                     self.id,
                 )
+                if invalid:
+                    raise RuntimeError(
+                        "Compaction returned an empty, incomplete, or truncated summary "
+                        f"(finish_reason={choice.get('finish_reason')!r}); history preserved at {backup}"
+                    )
+            except Exception as error:
+                self.store.event(
+                    "compaction_failed", {"error": str(error), "history_path": str(backup)}, self.id
+                )
+                raise
             finally:
                 self.operation = None
-            summary = response.json()["choices"][0]["message"]["content"]
-            if not summary:
-                raise RuntimeError("Model returned an empty continuation summary")
             self.session["messages"] = [
                 {"role": "user", "content": "Prior-session summary:\n" + summary},
                 *messages[cut:],

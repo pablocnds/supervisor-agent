@@ -18,6 +18,9 @@ def parser():
     sub = p.add_subparsers(dest="command", required=True)
     for name in ("status", "enable", "stop", "tick"):
         sub.add_parser(name)
+    resolve = sub.add_parser("alert-resolve", help="Resolve an investigated alert without enabling dispatch")
+    resolve.add_argument("id")
+    resolve.add_argument("resolution")
     message = sub.add_parser(
         "message", help="Send unstructured notes; --now triggers handling, otherwise defer to next tick"
     )

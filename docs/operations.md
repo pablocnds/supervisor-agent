@@ -115,3 +115,6 @@ continuation is queued explicitly. Raw event and collection endpoints support a 
 `supervisorctl --help` and its implementation provide the corresponding operation fields.
 
 Backups remain deferred. Before changing deployed code, stop dispatch and wait for a safe pause.
+
+See [reasoning-and-recovery.md](reasoning-and-recovery.md) for summary settings,
+startup readiness, alert resolution, observed project status, and experiment recovery.

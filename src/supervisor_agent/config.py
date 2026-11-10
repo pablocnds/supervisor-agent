@@ -11,6 +11,19 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class Compaction(Strict):
+    output_tokens: int = Field(default=4096, gt=0)
+    temperature: float = 0.7
+    extra: dict = Field(
+        default_factory=lambda: {
+            "reasoning_effort": "none",
+            "chat_template_kwargs": {"enable_thinking": False},
+            "top_p": 0.8,
+            "presence_penalty": 1.5,
+        }
+    )
+
+
 class Model(Strict):
     base_url: str
     profile: str
@@ -22,11 +35,14 @@ class Model(Strict):
     request_timeout_seconds: float = Field(default=3600, gt=0)
     cache_warning_ratio: float = Field(default=0.8, ge=0, le=1)
     extra: dict = Field(default_factory=dict)
+    compaction: Compaction = Field(default_factory=Compaction)
 
     @model_validator(mode="after")
     def limits(self):
         if not 8192 <= self.compact_tokens < self.context_window - self.output_tokens:
             raise ValueError("compact_tokens must leave generation headroom")
+        if self.compaction.output_tokens >= self.context_window // 2:
+            raise ValueError("compaction.output_tokens must leave input headroom")
         return self
 
 
@@ -51,6 +67,7 @@ class Settings(Strict):
     hours: list[int] = Field(default_factory=lambda: [0, 4, 8, 12, 16, 20])
     timezone: str = "UTC"
     poll_seconds: float = Field(default=5, gt=0)
+    startup_timeout_seconds: float = Field(default=30, ge=0)
     reminder_seconds: float = Field(default=1800, gt=0)
     delegate_seconds: float = Field(default=14400, gt=0)
     request_warning_seconds: float = Field(default=1800, gt=0)

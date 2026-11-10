@@ -48,15 +48,15 @@ def app(runtime):
             raise KeyError("Unknown collection")
         after = int(request.query_params.get("after", 0))
         limit = min(max(int(request.query_params.get("limit", 100)), 1), 1000)
-        return JSONResponse(
-            store.rows(
-                f"SELECT rowid AS cursor,* FROM {table} WHERE rowid>? ORDER BY rowid LIMIT ?", (after, limit)
-            )
+        rows = store.rows(
+            f"SELECT rowid AS cursor,* FROM {table} WHERE rowid>? ORDER BY rowid LIMIT ?", (after, limit)
         )
+        return JSONResponse([runtime.project_view(row) for row in rows] if table == "projects" else rows)
 
     async def detail(request):
         table, item = request.path_params["collection"], request.path_params["id"]
-        return JSONResponse(store.one(table, item))
+        row = store.one(table, item)
+        return JSONResponse(runtime.project_view(row) if table == "projects" else row)
 
     async def communication(request):
         value = store.one("communications", request.path_params["id"])
@@ -126,6 +126,10 @@ def app(runtime):
                 raise Conflict("Only the operator can globally stop dispatch")
             store.set("enabled", False)
             result = runtime.status()
+        elif operation == "alert_resolve":
+            if who != "operator":
+                raise Conflict("Only the operator can resolve an alert explicitly")
+            result = store.resolve_alert(a["id"], bounded_text(a["resolution"]))
         elif operation == "tick":
             if who != "operator":
                 raise Conflict("Routine triggers are operator operations")
@@ -143,7 +147,7 @@ def app(runtime):
             )
         elif operation == "steer":
             target = store.one("executions", a["execution_id"])
-            if target["state"] not in ("running", "paused", "queued"):
+            if target["state"] not in ("running", "paused", "queued", "failed"):
                 raise Conflict("Execution cannot receive steering in its current state")
             with store.db:
                 store.db.execute(
