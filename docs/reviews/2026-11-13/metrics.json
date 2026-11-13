@@ -1,0 +1,308 @@
+{
+  "reviewed_at": "2026-11-13",
+  "source_snapshot": "/tmp/supervisor-review-20261113-4495bjcr",
+  "supervisor_revision": "1200da60daea",
+  "harness_revision": "5728e8fc5f21",
+  "communications": {
+    "count": 22,
+    "words": 12599,
+    "routine_count": 10,
+    "routine_words": 5444,
+    "min_words": 337,
+    "max_words": 764,
+    "items": [
+      {
+        "id": "c26edf5f30864233bc745e8c7d6edf8f",
+        "created_at": "2026-11-10T22:51:47.165191+00:00",
+        "execution_id": "218dcab9331c4adaa2bdfda47c55701c",
+        "execution_kind": "inbox",
+        "words": 764,
+        "first_line": "## GA ideas triaged \u2014 1 project opened, 3 folded in as levers, 1 premise discarded"
+      },
+      {
+        "id": "cd99e0cab50141968363eea7a416afe2",
+        "created_at": "2026-11-11T00:34:44.728213+00:00",
+        "execution_id": "eef880e2e92343c5907e0f7c8c84ee94",
+        "execution_kind": "inbox",
+        "words": 568,
+        "first_line": "## Truncation alert triaged: self-recovered, ~10 min lost, no data loss \u2014 and the smoke data has a real problem worth flagging"
+      },
+      {
+        "id": "09ee4d67b5de4878bac50110d7e59d40",
+        "created_at": "2026-11-11T00:58:17.904311+00:00",
+        "execution_id": "dc1fd612328c491a890ff6a07d77445e",
+        "execution_kind": "routine",
+        "words": 608,
+        "first_line": "## Routine check: research run is healthy; I corrected the *interpretation* it was about to build on"
+      },
+      {
+        "id": "cb3b6980f854470fa43a937a9a369cc6",
+        "created_at": "2026-11-11T04:23:51.136943+00:00",
+        "execution_id": "bef6ae1aaea64907b0ca6159e0468935",
+        "execution_kind": "inbox",
+        "words": 588,
+        "first_line": "## Cache alert triaged: benign cold prefill after a pause (302 s), and the run has moved on to iteration 2"
+      },
+      {
+        "id": "cc1b62b497cd4211b8ada452f8eea142",
+        "created_at": "2026-11-11T05:09:19.345120+00:00",
+        "execution_id": "c905cba97f0140f19e29f799a25ae6c3",
+        "execution_kind": "routine",
+        "words": 425,
+        "first_line": "## Routine review 05:05: run healthy, iteration 2 needs a scope trim \u2014 guidance sent"
+      },
+      {
+        "id": "d1d94042fbe540e386b6d4c1f5699f40",
+        "created_at": "2026-11-11T09:41:39.594724+00:00",
+        "execution_id": "fafcd3293b174addacf4803fec3bb547",
+        "execution_kind": "routine",
+        "words": 517,
+        "first_line": "## Routine review 08:00\u201308:40 UTC \u2014 one live project, iteration 3 queued to resume"
+      },
+      {
+        "id": "43b7ebd65b024305a9e074691c233d0c",
+        "created_at": "2026-11-11T11:47:30.399722+00:00",
+        "execution_id": "fe26ce09ea074b40962a257f02abc9de",
+        "execution_kind": "inbox",
+        "words": 703,
+        "first_line": "## Entrenchment line is complete \u2014 synthesis publication published, selection now idle"
+      },
+      {
+        "id": "e0e2a423d2834d609bc63d984a2985b7",
+        "created_at": "2026-11-11T12:20:16.392245+00:00",
+        "execution_id": "daf0a3723bfc4361987d97089643c788",
+        "execution_kind": "inbox",
+        "words": 561,
+        "first_line": "## Alert triage: the cache warning is benign \u2014 but it is watching the wrong event (run-level numbers, +1 proposed fix)"
+      },
+      {
+        "id": "0cf83e96d74f4541a2de2183745ba941",
+        "created_at": "2026-11-11T13:40:38.437799+00:00",
+        "execution_id": "380b7eda2e4548b093518e5adb71924f",
+        "execution_kind": "routine",
+        "words": 728,
+        "first_line": "# Entrenchment line: two close-out gaps closed, and the extinction lever is now a project"
+      },
+      {
+        "id": "272bb55ec25e4e7eaa10b3dcb3d7f8e7",
+        "created_at": "2026-11-11T16:25:38.282202+00:00",
+        "execution_id": "689cec0210424d7089cab83b19a99c70",
+        "execution_kind": "routine",
+        "words": 536,
+        "first_line": "# Extinction lever, mid-iteration: the demographic bottleneck is NULL on the ratchet, strong on structure"
+      },
+      {
+        "id": "4950660052e64feebddff2f736336843",
+        "created_at": "2026-11-11T20:59:58.766706+00:00",
+        "execution_id": "4c443125543c48819bd00822e0ef6c4a",
+        "execution_kind": "routine",
+        "words": 525,
+        "first_line": "# Extinction lever: iteration 1 published; iteration 2 data collected, analysis next"
+      },
+      {
+        "id": "b981f88b7f524a25a14ffd06879ae76b",
+        "created_at": "2026-11-12T01:27:12.108586+00:00",
+        "execution_id": "b6e9a2fe2c544e4193db062d92b8b3ba",
+        "execution_kind": "routine",
+        "words": 692,
+        "first_line": "# 2026-11-12 ~01:30Z - write-up livelock found and stopped; iteration-2 data rescued, analysis queued"
+      },
+      {
+        "id": "0b634beb846744f2bb079497aecb8dd8",
+        "created_at": "2026-11-12T04:58:31.325322+00:00",
+        "execution_id": "80dded8e88c748848ea72bf3dfa73881",
+        "execution_kind": "routine",
+        "words": 614,
+        "first_line": "# Extinction lever: retired in both forms \u2014 iteration-2 rescue delivered all three answers"
+      },
+      {
+        "id": "867a60c5c97b4161840ec1dcbd631685",
+        "created_at": "2026-11-12T07:17:17.873659+00:00",
+        "execution_id": "245f35dca7d7477fa65e08456f3608d9",
+        "execution_kind": "inbox",
+        "words": 619,
+        "first_line": "## Audit caught a real statistics bug in the delivered bottleneck paper; corrected third iteration queued"
+      },
+      {
+        "id": "3a3b5be93f674dce85031a1d39c80575",
+        "created_at": "2026-11-12T08:27:05.309655+00:00",
+        "execution_id": "b4f50fcd01d142fdbdb9805024305c76",
+        "execution_kind": "inbox",
+        "words": 572,
+        "first_line": "## Cache warning resolved as benign \u2014 but it exposed two real problems worth your attention"
+      },
+      {
+        "id": "f1d57a35dd4e449a9aeccd9bc82ea5db",
+        "created_at": "2026-11-12T09:14:44.784396+00:00",
+        "execution_id": "08c9c7d9a28d4409b1b67c6d4c7eea4f",
+        "execution_kind": "routine",
+        "words": 337,
+        "first_line": "## Routine review: one catalog decision taken, and the write-up wedge cost now measured"
+      },
+      {
+        "id": "32a780a5ec9148edac78bedf6ad8ed21",
+        "created_at": "2026-11-12T12:33:47.532977+00:00",
+        "execution_id": "7f160e816bf845ad9fe3d0b12357219d",
+        "execution_kind": "inbox",
+        "words": 531,
+        "first_line": "## The Bottleneck rescue project now has a paper of record \u2014 and it is corrected"
+      },
+      {
+        "id": "300fed04ded44131895accf2bcb1e6ac",
+        "created_at": "2026-11-12T13:34:30.827176+00:00",
+        "execution_id": "08e4d124e01e4762a5bf782eafb7af47",
+        "execution_kind": "inbox",
+        "words": 561,
+        "first_line": "## Rescue project closed cleanly; line's last untested lever is now running"
+      },
+      {
+        "id": "5e9bed564f1947e082c45ee1c51aafeb",
+        "created_at": "2026-11-12T13:49:24.920486+00:00",
+        "execution_id": "08e4d124e01e4762a5bf782eafb7af47",
+        "execution_kind": "inbox",
+        "words": 429,
+        "first_line": "Correction to item 2 of my previous note, issued before the isolation project starts any work."
+      },
+      {
+        "id": "be21a817d63149d193bf745c2682f2bf",
+        "created_at": "2026-11-12T16:45:09.425957+00:00",
+        "execution_id": "a4597ac1b7c842e9bcb8ed4476e14deb",
+        "execution_kind": "inbox",
+        "words": 707,
+        "first_line": "## Cache-warning alert: benign, and now quantified line-wide \u2014 plus one isolation-project steering note"
+      },
+      {
+        "id": "d49a4a1a74914b3da08691dd4f080791",
+        "created_at": "2026-11-12T17:25:59.981211+00:00",
+        "execution_id": "64779a7c65e44c9880e50fd8c4625f16",
+        "execution_kind": "routine",
+        "words": 462,
+        "first_line": "## Routine review 16:55Z \u2014 no change; one new mechanism found, nothing needed from you right now"
+      },
+      {
+        "id": "b513944e133c45fcb1b9239d2f6a1333",
+        "created_at": "2026-11-12T20:51:46.918168+00:00",
+        "execution_id": "9e4181aa590c4382bb7eaf9102af842f",
+        "execution_kind": "inbox",
+        "words": 552,
+        "first_line": "## A published estimator in the isolation-lever project is wrong \u2014 its headline reversal is withdrawn, and the original question is still open"
+      }
+    ]
+  },
+  "supervisor_executions": {
+    "states": {
+      "completed": 22,
+      "paused": 1,
+      "queued": 1
+    },
+    "completed_seconds": 65740.15216808836,
+    "routine_seconds": 31177.247546296567,
+    "routine_median_seconds": 2979.078952454147,
+    "routine_over_30_minutes": 8,
+    "tool_calls": 1646,
+    "unsuccessful_tool_results": 242,
+    "tool_seconds": 513.984331490472,
+    "ordinary_prompt_tokens": 58488964,
+    "ordinary_cached_tokens": 56716902,
+    "compactions": 18,
+    "compaction_seconds": 2179.1466653840616
+  },
+  "writeup_exhaustion": [
+    {
+      "project_id": "0b144f67-508e-484a-9046-09ead5187868",
+      "pause_count": 1349,
+      "first_at": "2026-11-11T22:06:26.504324+00:00",
+      "last_at": "2026-11-11T23:59:58.964344+00:00",
+      "first_seq": 3592,
+      "last_seq": 15724
+    },
+    {
+      "project_id": "ee7e4e68-941c-4f2f-ac4d-bf240683723a",
+      "pause_count": 932,
+      "first_at": "2026-11-12T22:41:20.124629+00:00",
+      "last_at": "2026-11-13T00:00:00.019888+00:00",
+      "first_seq": 18597,
+      "last_seq": 26976
+    }
+  ],
+  "paper_rewrites": [
+    {
+      "at": "2026-11-12T21:50:03.366017+00:00",
+      "seq": 18526,
+      "call_id": "Ws3M61tKIpAkforlXeLeZ43wmqldM0ss"
+    },
+    {
+      "at": "2026-11-12T21:54:02.811849+00:00",
+      "seq": 18531,
+      "call_id": "zNIDKOOcpqduD4Qie7vmbywpugC7K7z7"
+    },
+    {
+      "at": "2026-11-12T21:58:21.820996+00:00",
+      "seq": 18536,
+      "call_id": "0tUuSuzipeSPtAoGSIbqqWQq6gEv5ZV7"
+    },
+    {
+      "at": "2026-11-12T22:02:10.349484+00:00",
+      "seq": 18540,
+      "call_id": "p0ytMarRGt9oGfVvpFP9BqBstkRSDL0d"
+    },
+    {
+      "at": "2026-11-12T22:06:03.725729+00:00",
+      "seq": 18544,
+      "call_id": "ZhFOFUXgr19Qs577xK48fTMLcrvAZWDa"
+    },
+    {
+      "at": "2026-11-12T22:10:19.445836+00:00",
+      "seq": 18548,
+      "call_id": "Wzev003C4WTvMsm27v8bVJzKjZCRyDnI"
+    },
+    {
+      "at": "2026-11-12T22:16:27.640472+00:00",
+      "seq": 18552,
+      "call_id": "cRVHgQgiC83XfJpOnNgQFMa0OaW1f9We"
+    },
+    {
+      "at": "2026-11-12T22:21:22.812226+00:00",
+      "seq": 18556,
+      "call_id": "S3sqxhCJwI6dZOAi8Jg5JhqGhcVrggh0"
+    },
+    {
+      "at": "2026-11-12T22:26:28.920415+00:00",
+      "seq": 18561,
+      "call_id": "dhjBvkUQDWh5cSkvmvgSIvZQ3HEoLGgj"
+    },
+    {
+      "at": "2026-11-12T22:31:46.730429+00:00",
+      "seq": 18566,
+      "call_id": "3PWT0D7fg3xAwzIfzjblitxRJNgyCkwb"
+    },
+    {
+      "at": "2026-11-12T22:32:54.692002+00:00",
+      "seq": 18570,
+      "call_id": "3i7fYM7U6foH6SxEiUgeLyaGGe0MsEoy"
+    },
+    {
+      "at": "2026-11-12T22:37:49.281196+00:00",
+      "seq": 18580,
+      "call_id": "cwgZzMZmiXT3tWEAzHJVgh3gb9jCN2QX"
+    }
+  ],
+  "reproductions": {
+    "paper_heading": {
+      "rejected": "## 2. Methodology: what was done, and what was verified",
+      "accepted": "## 2. Methodology",
+      "error": "paper.md needs a Methodology heading"
+    },
+    "published_rmst": {
+      "uncensored_times": [
+        1,
+        2,
+        10,
+        100
+      ],
+      "returned": 38.5,
+      "correct": 28.25
+    },
+    "xargs": "Both single- and double-quoted {} substitute with -I{}; the first failed launch omitted substitution."
+  }
+}
