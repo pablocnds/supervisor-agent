@@ -42,7 +42,7 @@ BUILTINS = [
     ),
     tool(
         "communicate",
-        "Publish arbitrary Markdown to the user. Metadata is attached automatically.",
+        "Notify the user of a relevant result, correction, blocker, or requested decision in concise Markdown — usually 50–120 words with a detail link. Healthy no-change checks stay internal. Metadata is automatic.",
         {"markdown": {"type": "string"}},
         ["markdown"],
     ),

@@ -212,6 +212,12 @@ def app(runtime):
                         "operator_resume",
                         {"project": project["id"], "pause_id": pause["id"] if pause else None},
                     )
+                elif project["backend"] == "harness":
+                    status = await runtime.harness.status(project["backend_id"])
+                    pause = status["control"]["pause_request"]
+                    if not pause or pause["actor"] == "operator":
+                        raise Conflict("Only the operator can release a user/legacy hold")
+                    store.set("supervisor_resume", {"project": project["id"], "pause_id": pause["id"]})
                 store.update_project(project["id"], {"status": "pending", "held": 0}, who)
                 store.set("next_project", project["id"])
                 store.set("selection_explicit", True)

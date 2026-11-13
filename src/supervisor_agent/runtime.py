@@ -8,6 +8,7 @@ from datetime import time as day_time
 from zoneinfo import ZoneInfo
 
 from .agent import Agent, Paused
+from .alerts import HandoffCache
 from .config import write_json, write_text
 from .context import changes_since, harness_brief
 from .harness import Harness
@@ -20,6 +21,7 @@ class Runtime:
         self.harness = harness or Harness(config.harness_socket)
         self.agent_factory = agent_factory
         self.agent = None
+        self.cache_handoffs = HandoffCache(store, min(300, config.request_warning_seconds))
         self.task = None
         self.stopping = False
         self.wake = asyncio.Event()
@@ -55,7 +57,9 @@ class Runtime:
             "- Research line/project directories accept free-form notes through supervisorctl note. "
             "Use its CLI/API for metadata and communications; do not edit live service databases.\n"
             f"- Durable operations and improvement notes: {c.state_root}/notes. "
-            "Update with supervisorctl note environment --file FILE --name NAME --replace. "
+            "Keep operations.md and improvements.md compact; put detailed history in project notes. "
+            "Update with supervisorctl note environment --file FILE --name NAME --replace "
+            "(NAME is the literal filename, including .md). "
             "Project notes use catalog IDs; harness operations use backend_id."
         )
 
@@ -66,7 +70,9 @@ class Runtime:
         previous = self.store.get("last_review")
         notes = []
         remaining = 6000
-        for note in self.store.notes():
+        available_notes = self.store.notes()
+        priorities = {"operations.md": 0, "improvements.md": 1}
+        for note in sorted(available_notes, key=lambda n: (priorities.get(n["name"], 2), n["name"])):
             with self.store.note_path(note["name"]).open() as stream:
                 excerpt = stream.read(min(2000, remaining))
             notes.append({**note, "excerpt": excerpt, "truncated": len(excerpt.encode()) < note["bytes"]})
@@ -76,7 +82,7 @@ class Runtime:
         communications = self.store.rows("SELECT * FROM communications ORDER BY rowid DESC LIMIT 3")
         for communication in communications:
             with open(communication["path"]) as stream:
-                communication["excerpt"] = stream.read(300)
+                communication["excerpt"] = stream.read(1000)
         alerts = self.store.rows(
             "SELECT id,text,occurrences,state,execution_id,updated_at FROM inbox "
             "WHERE kind='alert' ORDER BY updated_at DESC LIMIT ?",
@@ -97,6 +103,7 @@ class Runtime:
             "changes_since_last_review": changes_since(previous, observation),
             "previous_review": {k: v for k, v in previous.items() if k != "harness"} if previous else None,
             "environment_notes": notes,
+            "environment_note_index": available_notes,
             "recent_communications": communications,
             "catalog": self.store.rows(
                 "SELECT id,line_id,name,backend,backend_id,priority,status,held FROM projects ORDER BY priority DESC LIMIT 50"
@@ -188,7 +195,9 @@ class Runtime:
             self.store.create_execution(
                 "routine",
                 "Review current research progress, system health, priorities, and next work. "
-                "Keep this check short when everything is progressing normally.",
+                "Use the supplied delta and stop once a next-work decision is supported. "
+                "Healthy, unchanged checks should finish in a few minutes without a user communication. "
+                "Record deeper investigations as projects rather than performing them here.",
             )
 
     def scheduled_tick(self, instant=None):
@@ -366,7 +375,33 @@ class Runtime:
                 fingerprint="hold:" + selection,
             )
             return
+        supervisor_resume = self.store.get("supervisor_resume") == {
+            "project": selection,
+            "pause_id": pause["id"] if pause else None,
+        }
+        if (
+            phase == "paused"
+            and pause
+            and pause["actor"] != "supervisor"
+            and not (operator_resume or supervisor_resume)
+        ):
+            self.store.update_project(selection, {"status": "paused"})
+            self.store.set("next_project", None)
+            self.store.enqueue(
+                f"Project {selection} is paused by {pause['actor']}: {pause.get('reason', 'unknown reason')}. "
+                "Inspect its saved progress and decide whether to repair, explicitly resume, or select other work.",
+                "system",
+                "project_paused",
+                True,
+                fingerprint="pause:" + project["backend_id"] + ":" + str(pause["id"]),
+                source_key="pause:" + project["backend_id"] + ":" + str(pause["id"]),
+            )
+            return
         self.store.set("dispatch_in_flight", {"project": selection, "backend_id": project["backend_id"]})
+        review = self.store.get("last_review")
+        if review and self.store.get("handoff_review:" + project["backend_id"]) != review["execution_id"]:
+            self.cache_handoffs.begin(project["backend_id"], now(), self.config.model.profile)
+            self.store.set("handoff_review:" + project["backend_id"], review["execution_id"])
         await self.harness.start(
             project["backend_id"],
             phase == "paused",
@@ -374,6 +409,7 @@ class Runtime:
             actor="operator" if operator_resume else "supervisor",
         )
         self.store.set("operator_resume", None)
+        self.store.set("supervisor_resume", None)
         self.store.set("dispatch_in_flight", None)
         self.store.set("running_harness", project["backend_id"])
         self.store.update_project(selection, {"status": "running"})
@@ -399,6 +435,7 @@ class Runtime:
                 # Event receipts prevent duplicates after a crash between enqueue and cursor checkpoint.
                 receipt = "harness_event:" + str(event["seq"])
                 if event["at"] >= self.store.get("monitor_since", self.started_at):
+                    cache_accounted = self.cache_handoffs.observe(item, event)
                     if event["kind"] in ("project_completed", "run_stopped"):
                         data = event["data"] if "data" in event else event.get("data_json", {})
                         if isinstance(data, str):
@@ -413,11 +450,26 @@ class Runtime:
                                 fingerprint="completion:" + item,
                                 source_key=receipt,
                             )
+                    elif event["kind"] == "project_paused":
+                        data = event.get("data", {})
+                        if data.get("actor") not in (None, "operator", "supervisor"):
+                            self.store.enqueue(
+                                f"Harness project {item} requires a pause decision: {data.get('reason')}. "
+                                "Inspect saved progress before selecting or explicitly resuming it.",
+                                "system",
+                                "project_paused",
+                                True,
+                                fingerprint="pause:" + item + ":" + str(data.get("request_id")),
+                                source_key="pause:" + item + ":" + str(data.get("request_id")),
+                            )
                     elif event["kind"] in (
                         "model_prompt_cache_warning",
                         "model_output_truncated",
                         "operator_intervention_required",
                     ):
+                        if event["kind"] == "model_prompt_cache_warning" and cache_accounted:
+                            cursor = event["seq"]
+                            continue
                         self.store.alert(
                             f"harness:{item}:{event['kind']}",
                             f"Harness event {event['kind']} for project {item}: {json.dumps(event)}",
@@ -426,6 +478,7 @@ class Runtime:
                         )
                 cursor = event["seq"]
             self.store.set(cursor_key, cursor)
+            self.cache_handoffs.expire(item)
         self.snapshot = {"health": health, "projects": statuses}
         for project in self.store.rows("SELECT * FROM projects WHERE backend='harness'"):
             observed = statuses.get(project["backend_id"])

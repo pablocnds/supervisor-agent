@@ -1,25 +1,27 @@
 # Operations notebook
 
-Baseline observed on 2026-11-10; update facts when the environment changes.
+Keep this a compact current reference; link project notes for history.
 
-- Supervisor catalog IDs and harness backend IDs differ. Startup `catalog` lists
-  both. Use the catalog ID for project notes/priority/selection and backend_id for `irh`.
-- `supervisorctl events --after INTEGER --limit N` and
-  `irh events HARNESS_ID --after INTEGER --limit N` use integer sequence cursors,
-  not timestamps. Harness events take a positional ID, not `--project`.
-- `supervisorctl note environment --file FILE --name operations.md --replace`
-  updates this notebook; project notes use `note project CATALOG_ID`.
-- Shell calls have fresh `/tmp`, process namespaces, and no shell internet.
-  Use the persistent execution workspace, run batches in the foreground, and
-  retain per-cell receipts. Pipelines propagate failure; SIGPIPE from intentional
-  output clipping may be expected. No `errexit` is imposed.
-- The Supervisor Python environment and harness `/usr/bin/python3` differ.
-  NumPy/pip and CUDA/ROCm were unavailable to research shells at the last check;
-  C compilation and Python's standard library worked. Do not repeat broad
-  dependency probes without a changed requirement. Model inference uses Vulkan;
-  that does not establish a usable GPU research stack inside the sandbox.
-- Research and supervision share exclusive execution. Choose next work with
-  `supervisorctl select`; dispatch occurs after the current execution finishes.
-
-Read the service docs only for interfaces you actually need. Record new durable
-operational facts here so subsequent tasks can reuse them.
+- Catalog IDs differ from harness backend IDs. Startup catalog maps both. Use
+  catalog IDs for Supervisor notes/selection and backend IDs for irh.
+- Events use integer cursors: `supervisorctl events --after N --limit N` and
+  `irh events BACKEND_ID --after N --limit N`. Output is JSON; no --json flag.
+- Update this literal filename with `supervisorctl note environment --file FILE
+  --name operations.md --replace`; maintain improvements.md the same way.
+- Shell calls are synchronous, children die with the call, /tmp is fresh each
+  call, and shell internet is disabled. Keep files in the persistent workspace.
+  Pipelines propagate failure; shell sequencing does not imply errexit.
+- At the last capability check, C++ and Python stdlib worked; research NumPy,
+  pip, and ROCm/CUDA did not. Vulkan inference does not imply GPU research support.
+  Rediscover capabilities only when requirements or the environment change.
+- Only one agent runs. Select next work; dispatch follows execution completion.
+  Cooperative Supervisor pauses resume automatically; harness failure pauses
+  require a decision. Preserve partial datasets and drafts.
+- New projects inherit configured default tools. Check snapshot.enabled_tools
+  includes exa/manual; --tool overrides and --no-tools opts out. Existing
+  project snapshots stay frozen. There is no irh create --model option.
+- Completed inbox executions are handled automatically. alert-resolve is
+  operator-only; recovered warnings do not require repeated requests for it.
+- Verify the cited instrument/protocol and the actual bounded parallel command.
+  xargs -I{} replaces {} with either shell quote style; without -I it does not.
+  Freeze confirmatory plans before fresh results; smoke-test key estimators.

@@ -46,7 +46,7 @@ summary resets the context. On the installed model, a live probe reused 5,203 of
 New task packets include changes since the last successful review, recent user
 communications, compact model/progress observations and excerpts of durable
 environment notebooks. Full sessions, alerts and artifacts remain readable.
-The initial prompt (about 420 words) nudges small experiment scope, early useful
+The initial prompt nudges small experiment scope, early useful
 findings, short routine reviews and change-driven communications. These are soft
 behavioral choices: no 30-minute hard cap, communication schema, automatic
 semantic deduplication or forced improvement workflow is imposed. Tune after
@@ -56,3 +56,24 @@ General settings are loaded when the daemon starts. Restart after changing confi
 safe stop procedure. Prompt files are read for each new execution, but immutable release files should
 be changed through an operator-built release. The backend records streaming output and provider timing
 data; effective tokens per full request second are labeled separately from raw provider generation rates.
+
+The 13 November review tunes ordinary user notifications to roughly 50–120 words
+and makes healthy, uneventful routine checks silent. This is prompt guidance,
+not a schema, hard length limit, or notification quota. Routine reviews should
+usually take a few minutes; 30 minutes remains a soft target. Longer analysis
+belongs in a prioritized project. Follow notification relevance and routine
+duration on the next run; these are the first behaviors to tune further.
+
+Startup prioritizes operations.md and improvements.md within the existing
+6,000-character excerpt budget and lists all notebook paths separately. Keep the
+current notes compact; put chronological investigations with their projects.
+Recent communications now expose up to 1,000 characters each so their actual
+outcomes and requests are less likely to be hidden behind an opening status list.
+
+Only a cold first request correlated with our own same-profile dispatch can be
+considered an expected cache handoff. A subsequent successful request must prove
+warm reuse of at least 80% of the earlier prefix. The raw warning and measured
+cost remain in event observations. Failed/stopped runs, poor recovery, or no
+confirmation within five minutes (or the shorter configured operation-warning
+interval) retain ordinary inbox alerts. Mid-session and uncorrelated misses
+remain alerts. This deliberately avoids suppressing all first requests on resume.
